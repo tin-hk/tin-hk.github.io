@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業版 P&L 財務預算工具 v4.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Excel 處理庫 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.4);
+        }
+
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
+            color: #1e293b; 
+            min-height: 100vh;
+        }
+        
+        input, select {
+            color: #0f172a !important; 
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+            outline: none;
+        }
+
+        .section-card { 
+            @apply bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-8; 
+        }
+
+        .sticky-header { 
+            position: sticky; 
+            top: 0; 
+            z-index: 50; 
+            @apply bg-white/80 backdrop-blur-xl border-b border-slate-200 py-4 shadow-sm; 
+        }
+        
+        .q-badge { @apply px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter; }
+        .q-1 { @apply bg-emerald-100/80 text-emerald-700; border-left: 4px solid #10b981; }
+        .q-2 { @apply bg-blue-100/80 text-blue-700; border-left: 4px solid #3b82f6; }
+        .q-3 { @apply bg-amber-100/80 text-amber-700; border-left: 4px solid #f59e0b; }
+        .q-4 { @apply bg-purple-100/80 text-purple-700; border-left: 4px solid #8b5cf6; }
+
+        .month-card { 
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            @apply rounded-3xl overflow-hidden mb-8 transition-all hover:shadow-lg; 
+        }
+        
+        /* 美化後的 YTD 顯示 */
+        .ytd-label {
+            @apply text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block;
+        }
+        .ytd-container {
+            @apply flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-sm shadow-sm transition-all duration-300;
+        }
+        .ytd-pos { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
+        .ytd-neg { @apply bg-red-50 text-red-700 border border-red-200; }
+
+        .btn-modern {
+            @apply flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl font-bold text-sm transition-all transform hover:-translate-y-0.5 active:scale-95;
+        }
+        .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20; }
+        .btn-secondary { @apply bg-slate-100 text-slate-700 hover:bg-slate-200; }
+        .btn-success { @apply bg-emerald-500 text-white hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20; }
+        
+        .auto-save-tag {
+            @apply fixed bottom-6 right-6 px-4 py-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] rounded-full font-bold opacity-0 transition-opacity pointer-events-none z-[100];
+        }
+        .auto-save-tag.visible { opacity: 1; }
+
+        .diff-tag { @apply text-[10px] px-1.5 py-0.5 rounded-md font-bold; }
+        .diff-pos { @apply bg-emerald-50 text-emerald-600; }
+        .diff-neg { @apply bg-red-50 text-red-600; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <header class="bg-white border-b border-slate-100 py-10 px-6 text-center">
+        <div class="max-w-4xl mx-auto">
+            <div class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-xl shadow-blue-500/20 text-white">
+                <i class="fas fa-chart-line text-2xl"></i>
+            </div>
+            <h1 class="text-3xl font-black mb-2 tracking-tight text-slate-900">損益 (P&L) 財務預算工具 <span class="text-blue-600 text-lg">v4.7</span></h1>
+            <p class="text-slate-500 text-sm font-medium mb-8">支援實際利潤校準 (Actual Profit Tracker) & 完整成本模型</p>
+            
+            <div class="flex flex-wrap justify-center gap-3">
+                <button onclick="exportToExcel()" class="btn-modern btn-success">
+                    <i class="fas fa-file-excel"></i> 匯出為 Excel 報表
+                </button>
+                <label class="btn-modern btn-secondary cursor-pointer">
+                    <i class="fas fa-upload"></i> 匯入數據 (JSON)
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+                <button onclick="downloadJsonBackup()" class="btn-modern btn-secondary">
+                    <i class="fas fa-download"></i> 下載備份
+                </button>
+                <button onclick="resetAllData()" class="btn-modern bg-red-50 text-red-600 hover:bg-red-100">
+                    <i class="fas fa-redo-alt"></i> 重設所有數據
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sticky-header">
+        <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center md:text-left border-r border-slate-100">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">預估總營業額</p>
+                <p id="sum_sales" class="text-lg font-black text-slate-900">$0</p>
+            </div>
+            <div class="text-center md:text-left border-r border-slate-100">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">年度最終淨利 (含實際值)</p>
+                <p id="sum_profit" class="text-lg font-black">$0</p>
+            </div>
+            <div class="text-center md:text-left border-r border-slate-100">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">平均利潤率 (%)</p>
+                <p id="sum_margin" class="text-lg font-black text-blue-600">0%</p>
+            </div>
+            <div class="text-center md:text-left">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">每月固定成本</p>
+                <p id="sum_fixed" class="text-lg font-black text-slate-500">$0</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6 mt-10">
+        
+        <!-- 全域參數 -->
+        <section class="section-card">
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
+                <i class="fas fa-sliders-h text-blue-500"></i>
+                <h2 class="text-xl font-bold text-slate-800">全域參數 (Settings)</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="space-y-4">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">1. 預算期間</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 block mb-1">起始年份</label>
+                            <input type="number" id="startYear" value="2026" class="w-full p-3 rounded-xl font-bold" onchange="initializeFromUI()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 block mb-1">起始月份</label>
+                            <select id="startMonth" class="w-full p-3 rounded-xl font-bold" onchange="initializeFromUI()">
+                                <option value="0">1月</option><option value="1">2月</option><option value="2">3月</option>
+                                <option value="3">4月</option><option value="4">5月</option><option value="5">6月</option>
+                                <option value="6">7月</option><option value="7">8月</option><option value="8">9月</option>
+                                <option value="9">10月</option><option value="10">11月</option><option value="11">12月</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">2. 成本比例 (%)</p>
+                    <div class="bg-slate-50 p-4 rounded-2xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="text-xs font-bold text-slate-600">原材料成本 (COGS %)</label>
+                            <input type="number" id="global_cogs" value="30" oninput="calculateAndSave()" class="w-20 p-2 rounded-lg text-right">
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold text-slate-600">兼職及其他可變人事成本(%)</label>
+                            <input type="number" id="global_pers_pct" value="15" oninput="calculateAndSave()" class="w-20 p-2 rounded-lg text-right">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">3. 每月固定支出 ($)</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] text-slate-500 block mb-1">全職固定人事成本<BR>(FIXED FULL-TIME)</label><input type="number" id="fixed_fulltime" value="35000" oninput="calculateAndSave()" class="w-full p-2 rounded-lg text-right"></div>
+                        <div><label class="text-[10px] text-slate-500 block mb-1">消耗品開支<BR>(SUPPLIES/SAMPLING)</label><input type="number" id="fixed_supplies" value="2000" oninput="calculateAndSave()" class="w-full p-2 rounded-lg text-right"></div>
+                        <div><label class="text-[10px] text-slate-500 block mb-1">佔用開支 (包含維修/水電)<BR>(OCCUPANCY EXPENSES)</label><input type="number" id="fixed_occupancy" value="45000" oninput="calculateAndSave()" class="w-full p-2 rounded-lg text-right"></div>
+                        <div><label class="text-[10px] text-slate-500 block mb-1">雜項費用<BR>(OTHER EXPENSES)</label><input type="number" id="fixed_other_exp" value="3000" oninput="calculateAndSave()" class="w-full p-2 rounded-lg text-right"></div>
+                        <div class="col-span-2"><label class="text-[10px] text-slate-500 block mb-1">總公司行政費用 (Head office fee allocation)</label><input type="number" id="fixed_headoffice" value="8000" oninput="calculateAndSave()" class="w-full p-2 rounded-lg text-right"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 每月模擬 -->
+        <div id="monthlyGrid" class="space-y-4"></div>
+
+    </main>
+
+    <div id="saveToast" class="auto-save-tag">
+        <i class="fas fa-check-circle mr-1"></i> 已同步至本地儲存
+    </div>
+
+    <script>
+        const LOCAL_STORAGE_KEY = 'pl_budget_data_v4.7';
+        let monthlyData = [];
+
+        function initApp() {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+                try {
+                    const config = JSON.parse(savedData);
+                    loadConfigToUI(config);
+                    renderGrid();
+                    calculateAll();
+                } catch (e) {
+                    initializeData();
+                }
+            } else {
+                initializeData();
+            }
+        }
+
+        function initializeFromUI() {
+            initializeData();
+        }
+
+        function initializeData() {
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const startMonth = parseInt(document.getElementById('startMonth').value);
+            
+            monthlyData = [];
+            for (let i = 0; i < 12; i++) {
+                let current = new Date(startYear, startMonth + i, 1);
+                let daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+                
+                let counts = { mon_thu: 0, fri: 0, sat: 0, sun_ph: 0 };
+                for (let d = 1; d <= daysInMonth; d++) {
+                    let date = new Date(current.getFullYear(), current.getMonth(), d);
+                    let day = date.getDay();
+                    if (day === 0) counts.sun_ph++;
+                    else if (day === 6) counts.sat++;
+                    else if (day === 5) counts.fri++;
+                    else counts.mon_thu++;
+                }
+
+                monthlyData.push({
+                    monthLabel: `${current.getFullYear()}年 ${current.getMonth() + 1}月`,
+                    q: Math.floor((current.getMonth()) / 3) + 1,
+                    counts: counts,
+                    sales: { mon_thu: 8000, fri: 10000, sat: 14000, sun_ph: 16000 },
+                    actualProfit: null
+                });
+            }
+            renderGrid();
+            calculateAndSave();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('monthlyGrid');
+            grid.innerHTML = '';
+
+            monthlyData.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = `month-card`;
+                card.innerHTML = `
+                    <div class="px-6 py-5 bg-slate-50 flex flex-wrap justify-between items-center border-b border-slate-200 gap-4">
+                        <div class="flex items-center gap-4">
+                            <span class="q-badge q-${item.q}">Q${item.q}</span>
+                            <h3 class="text-xl font-black text-slate-800">${item.monthLabel}</h3>
+                        </div>
+                        <div class="flex gap-8">
+                            <div class="text-right border-r border-slate-200 pr-8">
+                                <span class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">預估營業額</span>
+                                <span id="m_gross_${index}" class="text-lg font-black text-slate-900">$0</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">系統預算淨利</span>
+                                <span id="m_forecast_profit_${index}" class="text-lg font-black"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                            <!-- 營業額輸入 (8/12) -->
+                            <div class="md:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                ${renderInputGroup(index, 'mon_thu', '週一至四', item)}
+                                ${renderInputGroup(index, 'fri', '週五', item)}
+                                ${renderInputGroup(index, 'sat', '週六', item)}
+                                ${renderInputGroup(index, 'sun_ph', '週日/假期', item, true)}
+                            </div>
+                            <!-- 實際數據校準 (4/12) -->
+                            <div class="md:col-span-4 bg-indigo-50/30 p-5 rounded-3xl border border-indigo-100 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="text-xs font-black text-indigo-600 flex items-center gap-1.5">
+                                        <i class="fas fa-edit"></i> 實際利潤 (Actual)
+                                    </label>
+                                    <span id="m_diff_${index}" class="diff-tag"></span>
+                                </div>
+                                <div class="relative">
+                                    <input type="number" value="${item.actualProfit !== null ? item.actualProfit : ''}" 
+                                        placeholder="留空則採計預算值"
+                                        oninput="updateActualProfit(${index}, this.value)" 
+                                        class="w-full p-4 rounded-2xl font-black text-indigo-700 border-indigo-200 focus:border-indigo-500 shadow-inner">
+                                </div>
+                                <p class="text-[9px] text-indigo-400 mt-3 font-medium leading-relaxed italic">
+                                    * 輸入後年度累計 (YTD) 將以此數據取代預算值進行計算
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                        <div class="flex gap-6">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">COGS 支出</span>
+                                <span id="m_cogs_label_${index}" class="text-xs font-bold text-red-600/80"></span>
+                            </div>
+                            <div class="flex flex-col border-l border-slate-200 pl-6">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">浮動人事 (兼職)</span>
+                                <span id="m_pers_label_${index}" class="text-xs font-bold text-amber-600/80"></span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="ytd-label">年初至今累計 (YTD)</span>
+                            <div id="m_ytd_container_${index}" class="ytd-container">
+                                <i class="fas fa-chart-pie text-[10px]"></i>
+                                <span id="m_ytd_value_${index}">$0</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderInputGroup(idx, key, label, item, isSpecial = false) {
+            const labelColor = isSpecial ? 'text-rose-500' : 'text-slate-500';
+            const icon = isSpecial ? 'fa-umbrella-beach' : 'fa-calendar-day';
+            return `
+                <div class="space-y-2">
+                    <label class="text-[11px] font-black ${labelColor} uppercase flex items-center gap-1.5">
+                        <i class="fas ${icon} text-[10px]"></i> ${label}
+                    </label>
+                    <div class="flex flex-col gap-1.5">
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[8px] font-black text-slate-300">天數</span>
+                            <input type="number" value="${item.counts[key]}" 
+                                oninput="updateItem(${idx}, 'counts', '${key}', this.value)" 
+                                class="w-full pl-9 pr-2 py-2 text-sm font-bold rounded-xl">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[8px] font-black text-slate-300">日均 $</span>
+                            <input type="number" value="${item.sales[key]}" 
+                                oninput="updateItem(${idx}, 'sales', '${key}', this.value)" 
+                                class="w-full pl-11 pr-2 py-2 text-sm font-bold rounded-xl">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateItem(index, category, key, value) {
+            monthlyData[index][category][key] = parseFloat(value) || 0;
+            calculateAndSave();
+        }
+
+        function updateActualProfit(index, value) {
+            const val = value === "" ? null : parseFloat(value);
+            monthlyData[index].actualProfit = val;
+            calculateAndSave();
+        }
+
+        function calculateAndSave() {
+            calculateAll();
+            saveToLocal();
+        }
+
+        function calculateAll() {
+            const cogsPct = (parseFloat(document.getElementById('global_cogs').value) || 0) / 100;
+            const persPct = (parseFloat(document.getElementById('global_pers_pct').value) || 0) / 100;
+
+            const totalFixed = (parseFloat(document.getElementById('fixed_fulltime').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_supplies').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_occupancy').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_other_exp').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_headoffice').value) || 0);
+
+            let yearSalesTotal = 0;
+            let yearProfitTotal = 0; 
+            let ytdAccumulated = 0;
+
+            monthlyData.forEach((item, index) => {
+                // 1. 預算計算
+                const mSales = (item.counts.mon_thu * item.sales.mon_thu) + 
+                               (item.counts.fri * item.sales.fri) + 
+                               (item.counts.sat * item.sales.sat) + 
+                               (item.counts.sun_ph * item.sales.sun_ph);
+                
+                const cogsAmt = mSales * cogsPct;
+                const persAmt = mSales * persPct;
+                const mForecastProfit = mSales - cogsAmt - persAmt - totalFixed;
+                
+                // 2. 判定有效利潤 (如果有 Actual 則用 Actual)
+                const effectiveProfit = (item.actualProfit !== null) ? item.actualProfit : mForecastProfit;
+                
+                ytdAccumulated += effectiveProfit;
+                yearSalesTotal += mSales;
+                yearProfitTotal += effectiveProfit;
+
+                // 3. UI 更新
+                document.getElementById(`m_gross_${index}`).innerText = `$${Math.round(mSales).toLocaleString()}`;
+                
+                const forecastEl = document.getElementById(`m_forecast_profit_${index}`);
+                forecastEl.innerText = `$${Math.round(mForecastProfit).toLocaleString()}`;
+                forecastEl.classList.remove('text-emerald-600', 'text-rose-600');
+                forecastEl.classList.add(mForecastProfit >= 0 ? 'text-emerald-600' : 'text-rose-600');
+
+                // 差額顯示
+                const diffEl = document.getElementById(`m_diff_${index}`);
+                if (item.actualProfit !== null) {
+                    const diff = item.actualProfit - mForecastProfit;
+                    const sign = diff >= 0 ? '+' : '';
+                    diffEl.innerText = `${sign}${Math.round(diff).toLocaleString()}`;
+                    diffEl.className = `diff-tag ${diff >= 0 ? 'diff-pos' : 'diff-neg'}`;
+                } else {
+                    diffEl.innerText = '';
+                    diffEl.className = `diff-tag`;
+                }
+
+                // YTD 更新與美化邏輯
+                const ytdValueEl = document.getElementById(`m_ytd_value_${index}`);
+                const ytdContainer = document.getElementById(`m_ytd_container_${index}`);
+                
+                ytdValueEl.innerText = `$${Math.round(ytdAccumulated).toLocaleString()}`;
+                ytdContainer.classList.remove('ytd-pos', 'ytd-neg');
+                ytdContainer.classList.add(ytdAccumulated >= 0 ? 'ytd-pos' : 'ytd-neg');
+
+                document.getElementById(`m_cogs_label_${index}`).innerText = `-$${Math.round(cogsAmt).toLocaleString()}`;
+                document.getElementById(`m_pers_label_${index}`).innerText = `-$${Math.round(persAmt).toLocaleString()}`;
+            });
+
+            document.getElementById('sum_sales').innerText = `$${Math.round(yearSalesTotal).toLocaleString()}`;
+            
+            const sumProfitEl = document.getElementById('sum_profit');
+            sumProfitEl.innerText = `$${Math.round(yearProfitTotal).toLocaleString()}`;
+            sumProfitEl.classList.remove('text-emerald-600', 'text-rose-600');
+            sumProfitEl.classList.add(yearProfitTotal >= 0 ? 'text-emerald-600' : 'text-rose-600');
+
+            document.getElementById('sum_margin').innerText = yearSalesTotal > 0 ? `${(yearProfitTotal / yearSalesTotal * 100).toFixed(1)}%` : '0%';
+            document.getElementById('sum_fixed').innerText = `$${Math.round(totalFixed).toLocaleString()}`;
+        }
+
+        let saveTimer;
+        function saveToLocal() {
+            clearTimeout(saveTimer);
+            const config = {
+                startYear: document.getElementById('startYear').value,
+                startMonth: document.getElementById('startMonth').value,
+                global_cogs: document.getElementById('global_cogs').value,
+                global_pers_pct: document.getElementById('global_pers_pct').value,
+                fixed: {
+                    fulltime: document.getElementById('fixed_fulltime').value,
+                    supplies: document.getElementById('fixed_supplies').value,
+                    occupancy: document.getElementById('fixed_occupancy').value,
+                    other: document.getElementById('fixed_other_exp').value,
+                    headoffice: document.getElementById('fixed_headoffice').value
+                },
+                monthlyData: monthlyData
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config));
+            
+            const toast = document.getElementById('saveToast');
+            toast.classList.add('visible');
+            saveTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
+        }
+
+        function loadConfigToUI(config) {
+            document.getElementById('startYear').value = config.startYear;
+            document.getElementById('startMonth').value = config.startMonth;
+            document.getElementById('global_cogs').value = config.global_cogs;
+            document.getElementById('global_pers_pct').value = config.global_pers_pct;
+            document.getElementById('fixed_fulltime').value = config.fixed.fulltime || 35000;
+            document.getElementById('fixed_supplies').value = config.fixed.supplies;
+            document.getElementById('fixed_occupancy').value = config.fixed.occupancy;
+            document.getElementById('fixed_other_exp').value = config.fixed.other;
+            document.getElementById('fixed_headoffice').value = config.fixed.headoffice;
+            monthlyData = config.monthlyData;
+        }
+
+        function resetAllData() {
+            if(confirm("確定要【清除所有數據】並重設預算嗎？此操作無法還原。")) {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                
+                document.getElementById('global_cogs').value = 0;
+                document.getElementById('global_pers_pct').value = 0;
+                document.getElementById('fixed_fulltime').value = 0;
+                document.getElementById('fixed_supplies').value = 0;
+                document.getElementById('fixed_occupancy').value = 0;
+                document.getElementById('fixed_other_exp').value = 0;
+                document.getElementById('fixed_headoffice').value = 0;
+                
+                const startYear = parseInt(document.getElementById('startYear').value);
+                const startMonth = parseInt(document.getElementById('startMonth').value);
+                
+                monthlyData = [];
+                for (let i = 0; i < 12; i++) {
+                    let current = new Date(startYear, startMonth + i, 1);
+                    monthlyData.push({
+                        monthLabel: `${current.getFullYear()}年 ${current.getMonth() + 1}月`,
+                        q: Math.floor((current.getMonth()) / 3) + 1,
+                        counts: { mon_thu: 0, fri: 0, sat: 0, sun_ph: 0 },
+                        sales: { mon_thu: 0, fri: 0, sat: 0, sun_ph: 0 },
+                        actualProfit: null
+                    });
+                }
+                
+                renderGrid();
+                calculateAll();
+                saveToLocal();
+            }
+        }
+
+        function exportToExcel() {
+            const dataForExcel = [];
+            let ytdAccumulated = 0;
+            const cogsPct = (parseFloat(document.getElementById('global_cogs').value) || 0) / 100;
+            const persPct = (parseFloat(document.getElementById('global_pers_pct').value) || 0) / 100;
+            const totalFixed = (parseFloat(document.getElementById('fixed_fulltime').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_supplies').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_occupancy').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_other_exp').value) || 0) +
+                               (parseFloat(document.getElementById('fixed_headoffice').value) || 0);
+
+            monthlyData.forEach((item) => {
+                const mSales = (item.counts.mon_thu * item.sales.mon_thu) + 
+                               (item.counts.fri * item.sales.fri) + 
+                               (item.counts.sat * item.sales.sat) + 
+                               (item.counts.sun_ph * item.sales.sun_ph);
+                const cogs = mSales * cogsPct;
+                const pers = mSales * persPct;
+                const forecastProfit = mSales - cogs - pers - totalFixed;
+                const finalProfit = item.actualProfit !== null ? item.actualProfit : forecastProfit;
+                ytdAccumulated += finalProfit;
+
+                dataForExcel.push({
+                    "月份": item.monthLabel,
+                    "季度": `Q${item.q}`,
+                    "月預估營業額": Math.round(mSales),
+                    "COGS 成本": Math.round(cogs),
+                    "兼職人事成本": Math.round(pers),
+                    "總固定成本": Math.round(totalFixed),
+                    "系統預算利潤": Math.round(forecastProfit),
+                    "實際利潤 (輸入值)": item.actualProfit !== null ? Math.round(item.actualProfit) : "-",
+                    "年度累計利潤 (YTD)": Math.round(ytdAccumulated)
+                });
+            });
+
+            const ws = XLSX.utils.json_to_sheet(dataForExcel);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "PL_Report");
+            XLSX.writeFile(wb, `PL_Budget_v4.7_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function downloadJsonBackup() {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (!savedData) return;
+            const blob = new Blob([savedData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `PL_Budget_v4.7_Backup.json`;
+            a.click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    loadConfigToUI(config);
+                    renderGrid();
+                    calculateAll();
+                    saveToLocal();
+                } catch (err) {
+                    console.error("匯入失敗:", err);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
