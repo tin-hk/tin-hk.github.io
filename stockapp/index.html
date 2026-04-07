@@ -81,7 +81,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
-        const USD_HKD_RATE = 7.8; 
+        const USD_HKD_RATE = 7.82; // 調整為更精確的港美匯率參考
         const STORAGE_KEY = 'stock_calc_v7_records';
         const CONFIG_KEY = 'stock_calc_v7_config';
 
@@ -110,7 +110,7 @@
             const [status, setStatus] = useState(null);
             const [tpMode, setTpMode] = useState('price'); 
             const [slMode, setSlMode] = useState('price');
-            const [editingId, setEditingId] = useState(null); // 追蹤目前是否在編輯現有紀錄
+            const [editingId, setEditingId] = useState(null);
 
             const initialForm = {
                 symbol: '', name: '', price: '',
@@ -247,33 +247,55 @@
                 const cp = parseFloat(form.price);
                 const tp = parseFloat(form.tpPrice);
                 const sl = parseFloat(form.slPrice);
-                const cap = parseFloat(form.capital);
-                const risk = parseFloat(form.riskPct);
+                const capHKD = parseFloat(form.capital); 
+                const riskPct = parseFloat(form.riskPct);
                 const lot = parseInt(form.lotSize) || 1;
 
-                if (!cp || !tp || !sl || !cap || cp <= 0 || sl >= cp) return null;
+                if (!cp || !tp || !sl || !capHKD || cp <= 0 || sl >= cp) return null;
 
-                const riskAmtHKD = cap * (risk / 100);
-                let shares = 0;
+                // 風險金額 (HKD)
+                const totalRiskAmtHKD = capHKD * (riskPct / 100);
+                
+                let maxSharesByCapital = 0;
+                let suggestedSharesByRisk = 0;
+
                 if (form.currency === 'USD') {
-                    const riskAmtUSD = riskAmtHKD / USD_HKD_RATE;
+                    // 美股：資產折算為 USD
+                    const capUSD = capHKD / USD_HKD_RATE;
+                    const riskAmtUSD = totalRiskAmtHKD / USD_HKD_RATE;
                     const lossPerShareUSD = cp - sl;
-                    shares = Math.floor(riskAmtUSD / lossPerShareUSD);
+
+                    // 1. 基於資產上限：最多能買多少股
+                    maxSharesByCapital = Math.floor(capUSD / cp);
+                    // 2. 基於風險建議：每股虧損換算
+                    suggestedSharesByRisk = Math.floor(riskAmtUSD / lossPerShareUSD);
                 } else {
+                    // 港股
                     const lossPerShareHKD = cp - sl;
-                    shares = Math.floor(riskAmtHKD / lossPerShareHKD);
+                    maxSharesByCapital = Math.floor(capHKD / cp);
+                    suggestedSharesByRisk = Math.floor(totalRiskAmtHKD / lossPerShareHKD);
                 }
 
-                const finalShares = Math.floor(shares / lot) * lot;
-                const investment = finalShares * cp;
+                // 取兩者較小值，確保不超資產，也不超風險。
+                let finalShares = Math.min(maxSharesByCapital, suggestedSharesByRisk);
+                
+                // 根據 Lot Size 向下取整
+                finalShares = Math.floor(finalShares / lot) * lot;
+
+                // 重新計算總投資額 (HKD)
+                const finalInvestmentHKD = (form.currency === 'USD') 
+                    ? (finalShares * cp * USD_HKD_RATE) 
+                    : (finalShares * cp);
+
                 const rr = ((tp - cp) / (cp - sl)).toFixed(2);
 
                 return {
                     shares: finalShares,
-                    investment,
+                    investment: finalInvestmentHKD,
                     rr,
-                    riskAmtHKD,
-                    isGood: parseFloat(rr) >= 2
+                    riskAmtHKD: totalRiskAmtHKD,
+                    isGood: parseFloat(rr) >= 2,
+                    isLimitedByCap: suggestedSharesByRisk > maxSharesByCapital // 是否觸發了資產上限保護
                 };
             }, [form]);
 
@@ -284,7 +306,6 @@
                 }
 
                 if (editingId) {
-                    // 更新原有紀錄
                     setRecords(records.map(rec => 
                         rec.id === editingId 
                         ? { ...form, ...results, id: editingId, date: new Date().toLocaleDateString() } 
@@ -292,7 +313,6 @@
                     ));
                     showStatus("策略已更新");
                 } else {
-                    // 新增紀錄
                     const newRec = {
                         ...form, ...results,
                         id: Date.now(),
@@ -315,7 +335,7 @@
                     '止損價': r.slPrice, 
                     '止損 %': r.slPct,
                     '建議股數': r.shares, 
-                    '投資額': r.investment,
+                    '投資額(HKD)': r.investment,
                     '盈虧比': r.rr 
                 }));
                 const ws = XLSX.utils.json_to_sheet(data);
@@ -354,7 +374,7 @@
                             slPrice: item['止損價'] || '',
                             slPct: item['止損 %'] || calcSlPct,
                             shares: item['建議股數'] || 0,
-                            investment: item['投資額'] || 0,
+                            investment: item['投資額(HKD)'] || 0,
                             rr: item['盈虧比'] || 0
                         };
                     });
@@ -363,6 +383,30 @@
                 };
                 reader.readAsBinaryString(file);
                 e.target.value = '';
+            };
+
+            const handleSymbolChange = (val) => {
+                const upperVal = val.toUpperCase();
+                // 修正：只要偵測到英文字母開頭（美股），就自動切換
+                const isUS = /^[A-Z]/.test(upperVal);
+                
+                setForm(prev => {
+                    // 只有當「代碼從非美股變成美股」時才自動改 lotSize
+                    const wasUS = /^[A-Z]/.test(prev.symbol);
+                    let newLotSize = prev.lotSize;
+                    if (isUS && !wasUS) {
+                        newLotSize = '1';
+                    } else if (!isUS && wasUS) {
+                        newLotSize = '100';
+                    }
+
+                    return {
+                        ...prev,
+                        symbol: upperVal,
+                        currency: isUS ? 'USD' : 'HKD',
+                        lotSize: newLotSize
+                    };
+                });
             };
 
             return (
@@ -380,7 +424,7 @@
                             </div>
                             <div>
                                 <h1 className="font-black text-slate-800 text-base tracking-tight leading-none">股票風險回報計算系統</h1>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Developed By Tin v7.6</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Developed By Tin v7.8</p>
                             </div>
                         </div>
                         <div className="flex gap-1.5">
@@ -400,9 +444,12 @@
                                 <div className="flex-1 custom-scrollbar pr-0.5 space-y-3 pb-24 md:pb-6">
                                     <div className="grid grid-cols-2 gap-3 shrink-0">
                                         <div className="bg-slate-900 text-white p-3 md:p-4 rounded-2xl shadow-md border border-slate-800">
-                                            <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase mb-0.5">建議股數</p>
+                                            <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase mb-0.5">建議最大股數</p>
                                             <p className="text-xl md:text-2xl font-black">{results ? results.shares.toLocaleString() : '---'}</p>
-                                            <p className="text-[10px] md:text-xs font-bold text-indigo-400">{results ? `$${results.investment.toLocaleString()}` : '等待輸入'}</p>
+                                            <p className="text-[10px] md:text-xs font-bold text-indigo-400 flex items-center gap-1">
+                                                {results ? `HK$${Math.round(results.investment).toLocaleString()}` : '等待輸入'}
+                                                {results?.isLimitedByCap && <span className="text-rose-400 bg-rose-400/10 px-1 rounded text-[8px] border border-rose-400/20">已觸上限</span>}
+                                            </p>
                                         </div>
                                         <div className={`p-3 md:p-4 rounded-2xl shadow-md border-2 ${results ? (results.isGood ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200') : 'bg-white border-slate-100'}`}>
                                             <p className={`text-[9px] md:text-xs font-bold uppercase mb-0.5 ${results ? (results.isGood ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}`}>盈虧比 (R/R)</p>
@@ -419,7 +466,7 @@
                                                 <Icon name="edit-3" size={12} /> {editingId ? '正在修改策略' : '股票策略器'}
                                             </h3>
                                             <button onClick={clearForm} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter">
-                                                <Icon name="trash-2" size={12} /> 清除介面
+                                                <Icon name="trash-2" size={12} /> 清空
                                             </button>
                                         </div>
 
@@ -427,11 +474,7 @@
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-500 ml-1 uppercase">代碼</label>
                                                 <div className="relative">
-                                                    <input type="text" className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl font-black text-xs md:text-sm uppercase outline-none focus:border-indigo-500 transition-all" placeholder="NVDA" value={form.symbol} onChange={(e) => {
-                                                        const val = e.target.value.toUpperCase();
-                                                        let isUS = /^[A-Z]{2,}$/.test(val);
-                                                        setForm({...form, symbol: val, currency: isUS ? 'USD' : 'HKD', lotSize: isUS ? '1' : (form.lotSize || '100')});
-                                                    }} />
+                                                    <input type="text" className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl font-black text-xs md:text-sm uppercase outline-none focus:border-indigo-500 transition-all" placeholder="NVDA / 0700" value={form.symbol} onChange={(e) => handleSymbolChange(e.target.value)} />
                                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-400 bg-indigo-50 px-1 py-0.5 rounded">{form.currency}</div>
                                                 </div>
                                             </div>
@@ -477,16 +520,32 @@
 
                                         <div className="bg-slate-50 p-3 md:p-4 rounded-2xl border border-slate-100 grid grid-cols-2 gap-3">
                                             <div className="space-y-0.5">
-                                                <label className="text-[9px] font-bold text-slate-400 uppercase">總資產 (HKD)</label>
+                                                <label className="text-[9px] font-bold text-slate-400 uppercase flex justify-between">
+                                                    <span>總資產 (HKD)</span>
+                                                </label>
                                                 <input type="number" className="w-full bg-white border border-slate-200 p-1.5 rounded-lg font-black text-[10px] md:text-xs outline-none focus:border-indigo-300" value={form.capital} onChange={(e) => setForm({...form, capital: e.target.value})} />
+                                                <p className="text-[8px] font-bold text-slate-400 mt-1 italic">
+                                                    ≈ USD {(parseFloat(form.capital) / USD_HKD_RATE || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} (Rate: {USD_HKD_RATE})
+                                                </p>
                                             </div>
                                             <div className="space-y-0.5">
                                                 <label className="text-[9px] font-bold text-slate-400 uppercase">單筆風險 %</label>
                                                 <input type="number" className="w-full bg-white border border-slate-200 p-1.5 rounded-lg font-black text-[10px] md:text-xs outline-none focus:border-indigo-300" value={form.riskPct} onChange={(e) => setForm({...form, riskPct: e.target.value})} />
+                                                <p className="text-[8px] font-bold text-indigo-400 mt-1">
+                                                    Risk: HK$ {(parseFloat(form.capital) * (parseFloat(form.riskPct)/100) || 0).toLocaleString()}
+                                                </p>
                                             </div>
                                             <div className="col-span-2 space-y-0.5">
-                                                <label className="text-[9px] font-bold text-slate-400 uppercase">每手股數 (Lot Size)</label>
-                                                <input type="number" className="w-full bg-white border border-slate-200 p-1.5 rounded-lg font-black text-[10px] md:text-xs outline-none focus:border-indigo-300" value={form.lotSize} onChange={(e) => setForm({...form, lotSize: e.target.value})} />
+                                                <label className="text-[9px] font-bold text-slate-400 uppercase flex justify-between">
+                                                    <span>每手股數 (Lot Size)</span>
+                                                    {form.currency === 'USD' && <span className="text-indigo-500 font-black">美股建議 1</span>}
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full bg-white border border-slate-200 p-1.5 rounded-lg font-black text-[10px] md:text-xs outline-none focus:border-indigo-300 transition-all" 
+                                                    value={form.lotSize} 
+                                                    onChange={(e) => setForm({...form, lotSize: e.target.value})}
+                                                />
                                             </div>
                                         </div>
 
@@ -522,7 +581,10 @@
                                                             {rec.symbol.substring(0, 4)}
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-black text-slate-800 text-xs md:text-sm leading-none">{rec.name || rec.symbol}</h3>
+                                                            <div className="flex items-center gap-1">
+                                                                <h3 className="font-black text-slate-800 text-xs md:text-sm leading-none">{rec.name || rec.symbol}</h3>
+                                                                <span className={`text-[8px] font-black px-1 rounded ${rec.currency === 'USD' ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-100 text-slate-400'}`}>{rec.currency}</span>
+                                                            </div>
                                                             <p className="text-[9px] font-bold text-slate-400 mt-1">{rec.date}</p>
                                                         </div>
                                                     </div>
@@ -535,7 +597,7 @@
                                                     <div className="space-y-1">
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-slate-400 uppercase">進場價</span>
-                                                            <span className="text-xs font-black text-slate-700">${rec.price}</span>
+                                                            <span className="text-xs font-black text-slate-700">{rec.currency === 'USD' ? '$' : 'HK$'}{rec.price}</span>
                                                         </div>
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-slate-400 uppercase">建議股數</span>
@@ -543,13 +605,13 @@
                                                         </div>
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-slate-400 uppercase">投資額</span>
-                                                            <span className="text-xs font-black text-slate-700">${Math.round(rec.investment).toLocaleString()}</span>
+                                                            <span className="text-xs font-black text-slate-700">HK$ {Math.round(rec.investment).toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1 pl-2 border-l border-slate-50">
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-emerald-500 uppercase">止盈價</span>
-                                                            <span className="text-xs font-black text-emerald-600">${rec.tpPrice}</span>
+                                                            <span className="text-xs font-black text-emerald-600">{rec.currency === 'USD' ? '$' : 'HK$'}{rec.tpPrice}</span>
                                                         </div>
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-emerald-400/70 uppercase">止盈 %</span>
@@ -557,7 +619,7 @@
                                                         </div>
                                                         <div className="flex justify-between items-baseline pt-1">
                                                             <span className="text-[8px] font-bold text-rose-500 uppercase">止損價</span>
-                                                            <span className="text-xs font-black text-rose-600">${rec.slPrice}</span>
+                                                            <span className="text-xs font-black text-rose-600">{rec.currency === 'USD' ? '$' : 'HK$'}{rec.slPrice}</span>
                                                         </div>
                                                         <div className="flex justify-between items-baseline">
                                                             <span className="text-[8px] font-bold text-rose-400/70 uppercase">止損 %</span>
