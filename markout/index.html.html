@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>Pastry Order Mobile App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root,
+    [data-theme="light"] {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --surface-2: #f3f1eb;
+      --text: #1f2328;
+      --muted: #667085;
+      --border: rgba(31, 35, 40, 0.12);
+      --primary: #0f766e;
+      --primary-2: #115e59;
+      --danger: #b42318;
+      --danger-soft: #fee4e2;
+      --success-soft: #ecfdf3;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+      --radius-sm: 12px;
+      --font: "Inter", "Noto Sans TC", sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --bg: #121417;
+      --surface: #1c2128;
+      --surface-2: #232a33;
+      --text: #f3f4f6;
+      --muted: #a1aab6;
+      --border: rgba(255, 255, 255, 0.12);
+      --primary: #34d399;
+      --primary-2: #10b981;
+      --danger: #f97066;
+      --danger-soft: rgba(249, 112, 102, 0.12);
+      --success-soft: rgba(52, 211, 153, 0.12);
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button, input {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: 0;
+      background: none;
+      cursor: pointer;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+    }
+
+    .skip-link:focus {
+      left: 12px;
+      top: 12px;
+      z-index: 99;
+      background: var(--surface);
+      padding: 10px 12px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px 16px 120px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      margin: -16px -16px 12px;
+      padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow);
+      flex: 0 0 auto;
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .icon-btn {
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .stat {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap input {
+      padding-right: 44px;
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      display: none;
+    }
+
+    .clear-search.show {
+      display: grid;
+      place-items: center;
+    }
+
+    .toolbar-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      min-height: 44px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: transparent;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .product-row {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .product-head {
+      display: flex;
+      gap: 10px;
+      align-items: start;
+      justify-content: space-between;
+    }
+
+    .meta {
+      min-width: 0;
+    }
+
+    .code {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+      word-break: break-all;
+    }
+
+    .en {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    .zh {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    .delete-btn {
+      flex: 0 0 auto;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .qty-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .qty-box {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .qty-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .stepper button {
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .stepper input {
+      min-height: 40px;
+      text-align: center;
+      padding: 8px;
+      font-weight: 700;
+    }
+
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .bottom-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+    }
+
+    .bottom-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 10px;
+    }
+
+    .summary-pill {
+      min-height: 48px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 50;
+    }
+
+    .sheet-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      background: var(--surface);
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.22);
+      padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+      transform: translateY(105%);
+      transition: transform 0.22s ease;
+      max-height: 88dvh;
+      overflow: auto;
+    }
+
+    .sheet.show {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 42px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 0 auto 10px;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .sheet-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .summary-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+      background: var(--surface-2);
+    }
+
+    .summary-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .summary-name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .summary-code {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .summary-qty {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .summary-badge {
+      min-width: 54px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: var(--success-soft);
+      font-weight: 700;
+    }
+
+    .summary-badge.return {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .helper {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    @media (min-width: 640px) {
+      .qty-grid {
+        grid-template-columns: repeat(2, minmax(0, 220px));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <a class="skip-link" href="#main">跳至內容</a>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M5 18h14M7 18V9l5-3 5 3v9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M10 18v-4h4v4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">Pastry Order</div>
+            <div class="brand-subtitle">手機產品點存 Web app</div>
+          </div>
+        </div>
+        <button class="icon-btn" id="themeToggle" type="button" aria-label="切換深淺色模式">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="panel">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">產品</div>
+            <div class="stat-value" id="statProducts">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">已選</div>
+            <div class="stat-value" id="statSelected">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">保存</div>
+            <div class="stat-value" id="statSave">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">退貨</div>
+            <div class="stat-value" id="statReturn">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="search-row">
+          <div class="search-wrap">
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="搜尋編號／英文／中文名稱"
+              aria-label="搜尋產品"
+              autocomplete="off"
+            />
+            <button class="clear-search" id="clearSearch" type="button" aria-label="清除搜尋文字">✕</button>
+          </div>
+          <button class="btn btn-secondary" id="openAddSheet" type="button">臨時新增產品</button>
+        </div>
+
+        <div class="toolbar-grid">
+          <button class="btn btn-secondary" id="openSummary" type="button">查看清單</button>
+          <button class="btn btn-danger" id="resetAll" type="button">一鍵清空</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div id="productList" class="list" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="bottom-inner">
+      <div class="summary-pill" id="bottomSummary">已選 0 項｜保存 0｜退貨 0</div>
+      <button class="btn btn-primary" id="openSummaryBottom" type="button">查看清單</button>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="backdrop"></div>
+
+  <section class="sheet" id="addSheet" aria-hidden="true">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">新增產品</div>
+      <button class="icon-btn" type="button" data-close="addSheet" aria-label="關閉新增產品">✕</button>
+    </div>
+
+    <form id="addForm" class="form-grid">
+      <div class="field">
+        <label for="newCode">產品編號 Product Code</label>
+        <input
+          id="newCode"
+          name="code"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          placeholder="只可輸入數字，保留最前面的 0"
+          autocomplete="off"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="newEn">英文名稱 English Name</label>
+        <input id="newEn" name="en" type="text" placeholder="例如 BlueScon" autocomplete="off" required />
+      </div>
+
+      <div class="field">
+        <label for="newZh">中文名稱 Chinese Name</label>
+        <input id="newZh" name="zh" type="text" placeholder="如有中文名稱可輸入" autocomplete="off" />
+        <div class="hint">中文名稱可留空，但建議填寫。</div>
+      </div>
+
+      <button class="btn btn-primary" type="submit">加入產品</button>
+    </form>
+  </section>
+
+  <section class="sheet" id="summarySheet" aria-hidden="true">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">查看清單</div>
+      <button class="icon-btn" type="button" data-close="summarySheet" aria-label="關閉查看清單">✕</button>
+    </div>
+
+    <div class="helper">緊縮排版只顯示已輸入保存或退貨數量的產品。</div>
+    <div class="summary-list" id="summaryList"></div>
+  </section>
+
+  <script>
+    const seedProducts = [
+{ code: "0390080001", en: "BlueScon", zh: "藍莓士干餅" },
+{ code: "0390080101", en: "BlueMuff", zh: "藍莓鬆餅" },
+{ code: "0390081249", en: "MatMocMuff", zh: "抹茶麻糬鬆餅" },
+{ code: "0390080103", en: "ChocMuff", zh: "朱古力鬆餅" },
+{ code: "0390080155", en: "Crois", zh: "牛角包" },
+{ code: "0390080752", en: "CinnDan", zh: "肉桂丹麥酥" },
+{ code: "0390080754", en: "ChocDan", zh: "朱古力丹麥酥" },
+{ code: "0390081399", en: "HMush Crois", zh: "蘑菇火腿芝士牛角包" },
+{ code: "0390080151", en: "SausRoll", zh: "肉卷" },
+{ code: "0390080154", en: "Beef Puff", zh: "咖喱牛肉酥" },
+{ code: "0390080165", en: "MushPock", zh: "蘑菇芝士餡餅" },
+{ code: "0390080787", en: "Ham&TomDan", zh: "火腿蕃茄丹麥酥" },
+{ code: "0390080212", en: "CottBPie", zh: "薯蓉牛肉批" },
+{ code: "0390080203", en: "SpinPie", zh: "菠菜西蘭花芝士批" },
+{ code: "0390080201", en: "ChiMusPi", zh: "雞肉蘑菇批" },
+{ code: "0390080306", en: "BlueYog", zh: "藍莓乳酪杯" },
+{ code: "0390080176", en: "BerrGYog", zh: "雜莓希臘式乳酪杯" },
+{ code: "0390080982", en: "OatChiaPar", zh: "純素奇亞籽芒果燕麥奶" },
+{ code: "0390080809", en: "LemoTart", zh: "檸檬撻" },
+{ code: "0390081370", en: "ChocETart", zh: "朱古力蛋撻" },
+{ code: "0390028325", en: "PineBun", zh: "厚切牛油菠蘿包" },
+{ code: "0800018887", en: "AlmdFingLem", zh: "星檸杏條" },
+{ code: "0800018878", en: "Espresso Nut Cookie", zh: "星巴克特濃咖啡果仁曲奇" },
+{ code: "0390080700", en: "BanaLoaf", zh: "香蕉核桃蛋糕" },
+{ code: "0390081553", en: "EariLemLoaf", zh: "伯爵茶檸檬蛋糕" },
+{ code: "0390081554", en: "ChoDubaCook", zh: "杜拜朱古力曲奇" },
+{ code: "0390080876", en: "WheToast", zh: "片裝麥多士" },
+{ code: "0390028339", en: "FruToast", zh: "乾果果仁黑麥多士" },
+{ code: "0390028643", en: "CreaChee", zh: "忌廉芝士" },
+{ code: "0390029011", en: "BagPlanChe", zh: "原味貝果" },
+{ code: "0390029008", en: "BagAllChe", zh: "雜錦貝果" },
+{ code: "0390080515", en: "SlicBlue", zh: "藍莓芝士蛋糕" },
+{ code: "0390080516", en: "ChocMaqu", zh: "朱古力蛋糕" },
+{ code: "0390081550", en: "MontBlaCake", zh: "栗子蒙布朗蛋糕" },
+{ code: "0390028480", en: "LasaBeef", zh: "肉醬千層麵" },
+{ code: "0390028307", en: "CroqM", zh: "火腿芝士脆多" },
+{ code: "0390080232", en: "CheeSaus", zh: "芝心香草烤卷" },
+{ code: "0390028547", en: "HonChickHalf", zh: "蜜糖芥末雞肉三文治(半份)" },
+{ code: "0390028288", en: "ChicSand", zh: "煙雞肉香麥三文治" },
+{ code: "0390028287", en: "HEggSand", zh: "火腿蛋沙律三文治" },
+{ code: "0390028644", en: "AvoEWBrio", zh: "牛油果蛋白軟包三文治" },
+{ code: "0390028349", en: "RchicBroi", zh: "迷迭香雞沙律芝士軟包三文治" },
+{ code: "0390028960", en: "SalEggMaySW", zh: "煙三文魚蛋沙律軟包三文治" },
+{ code: "0390028256", en: "BHCrois", zh: "布利芝士火腿牛角包" },
+{ code: "0390028235", en: "HamWSBun", zh: "火腿瑞士芝士蛋白酥皮三文治" },
+{ code: "0390028234", en: "BEggCBun", zh: "煙 bacon 車打芝士蛋酥皮三文治" },
+{ code: "0390028261", en: "Chick Toast", zh: "辣雞肉牛油果醬三文治" },
+{ code: "0390028987", en: "ChicPinBun", zh: "雞肉餅芝士菠蘿包" },
+{ code: "0390028997", en: "TCornBread", zh: "吞拿魚蛋白芝士黑麥包" },
+{ code: "0390029026", en: "WGuoChickSW", zh: "牛油果醬慢煮雞香麥三文治" },
+{ code: "0390029044", en: "PProsFocSW", zh: "薩勒醬配巴馬火腿義式香草三明治" },
+{ code: "0390029045", en: "BeefCranBSW", zh: "燒牛肉配紅莓醬德式貝果三文治" },
+{ code: "0390029041", en: "BriocheT&C", zh: "吞拿魚粟米軟包三文治" },
+{ code: "0390029042", en: "BriocheEggC", zh: "蛋沙律芝士軟包三文治" },
+{ code: "0390029048", en: "PestChicBag", zh: "青醬雞肉配日曬蕃茄忌廉芝士貝果" },
+{ code: "0390028544", en: "TeriSoba", zh: "日式照燒雞肉蕎麥麵沙律" },
+{ code: "0390028328", en: "SaiPSal", zh: "煙三文魚溏心蛋薯仔沙律" },
+{ code: "0390028985", en: "CaeSalmEgg", zh: "慢煮雞溏心蛋凱撒沙律" },
+{ code: "0390028991", en: "CFruit Cup", zh: "鮮雜果杯" },
+{ code: "0390028490", en: "Caesar Wrap", zh: "雞肉凱撒沙律卷" },
+{ code: "0390028233", en: "WhitSWrap", zh: "蛋白芝士菠菜卷" },
+{ code: "0390081077", en: "TunaQuinMult", zh: "吞拿魚芝士藜麥多穀軟包" },
+{ code: "0390028990", en: "BufChicCiab", zh: "水牛城雞芝士意大利軟包" },
+
+
+
+{ code: "0707041177", en: "Orange Juice", zh: "橙汁" },
+{ code: "0707041185", en: "Grapefruit Juice", zh: "西柚汁" },
+{ code: "0707041630", en: "Kiwi Juice", zh: "奇異果汁" },
+{ code: "0707041159", en: "Guava Juice", zh: "番石榴汁" },
+    ];
+
+    const DB_NAME = "pastry-order-mobile-app";
+    const STORE_NAME = "appState";
+    const STORE_KEY = "state";
+
+    const state = {
+      theme: "light",
+      search: "",
+      products: []
+    };
+
+    const el = {
+      body: document.body,
+      themeToggle: document.getElementById("themeToggle"),
+      themeIcon: document.getElementById("themeIcon"),
+      statProducts: document.getElementById("statProducts"),
+      statSelected: document.getElementById("statSelected"),
+      statSave: document.getElementById("statSave"),
+      statReturn: document.getElementById("statReturn"),
+      searchInput: document.getElementById("searchInput"),
+      clearSearch: document.getElementById("clearSearch"),
+      productList: document.getElementById("productList"),
+      bottomSummary: document.getElementById("bottomSummary"),
+      openAddSheet: document.getElementById("openAddSheet"),
+      openSummary: document.getElementById("openSummary"),
+      openSummaryBottom: document.getElementById("openSummaryBottom"),
+      resetAll: document.getElementById("resetAll"),
+      addSheet: document.getElementById("addSheet"),
+      summarySheet: document.getElementById("summarySheet"),
+      backdrop: document.getElementById("backdrop"),
+      addForm: document.getElementById("addForm"),
+      summaryList: document.getElementById("summaryList")
+    };
+
+    let dbPromise = null;
+    let activeSheet = null;
+    let saveTimer = null;
+
+    function uid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function digitsOnly(value) {
+      return String(value ?? "").replace(/\D+/g, "");
+    }
+
+    function qtyValue(value) {
+      const n = Number(digitsOnly(value));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function cloneSeedProducts() {
+      return seedProducts.map(item => ({
+        id: uid(),
+        code: digitsOnly(item.code),
+        en: String(item.en || "").trim(),
+        zh: String(item.zh || "").trim(),
+        save: 0,
+        return: 0
+      }));
+    }
+
+    function openDB() {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME);
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return dbPromise;
+    }
+
+    async function readState() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(STORE_KEY);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function writeState() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const payload = JSON.parse(JSON.stringify(state));
+        const request = store.put(payload, STORE_KEY);
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function persistSoon() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        writeState().catch(() => {});
+      }, 60);
+    }
+
+    function getSystemTheme() {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function applyTheme(theme) {
+      state.theme = theme;
+      el.body.setAttribute("data-theme", theme);
+      el.themeIcon.textContent = theme === "dark" ? "☀️" : "🌙";
+      persistSoon();
+    }
+
+    function getFilteredProducts() {
+      const keyword = state.search.trim().toLowerCase();
+      if (!keyword) return state.products;
+      return state.products.filter(p =>
+        p.code.toLowerCase().includes(keyword) ||
+        p.en.toLowerCase().includes(keyword) ||
+        p.zh.toLowerCase().includes(keyword)
+      );
+    }
+
+    function getSummary() {
+      const selected = state.products.filter(p => (p.save || 0) > 0 || (p.return || 0) > 0);
+      const saveTotal = state.products.reduce((sum, p) => sum + (p.save || 0), 0);
+      const returnTotal = state.products.reduce((sum, p) => sum + (p.return || 0), 0);
+      return { selected, saveTotal, returnTotal };
+    }
+
+    function renderProducts() {
+      const products = getFilteredProducts();
+
+      if (!products.length) {
+        el.productList.innerHTML = '<div class="empty">找不到產品，請修改搜尋字詞或新增產品。</div>';
+        return;
+      }
+
+      el.productList.innerHTML = products.map(product => `
+        <article class="product-row" data-id="${escapeHtml(product.id)}">
+          <div class="product-head">
+            <div class="meta">
+              <div class="code">${escapeHtml(product.code)}</div>
+              <div class="en">${escapeHtml(product.en || "-")}</div>
+              ${product.zh ? `<div class="zh">${escapeHtml(product.zh)}</div>` : ""}
+            </div>
+            <button class="delete-btn" type="button" data-action="delete" aria-label="刪除 ${escapeHtml(product.code)}">刪除</button>
+          </div>
+
+          <div class="qty-grid">
+            <div class="qty-box">
+              <div class="qty-label">保存</div>
+              <div class="stepper">
+                <button type="button" data-action="minus" data-field="save" aria-label="減少保存">−</button>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  enterkeyhint="done"
+                  data-role="qty-input"
+                  data-field="save"
+                  aria-label="保存數量"
+                  value="${product.save ? escapeHtml(product.save) : ""}"
+                  placeholder="0"
+                  autocomplete="off"
+                />
+                <button type="button" data-action="plus" data-field="save" aria-label="增加保存">+</button>
+              </div>
+            </div>
+
+            <div class="qty-box">
+              <div class="qty-label">退貨</div>
+              <div class="stepper">
+                <button type="button" data-action="minus" data-field="return" aria-label="減少退貨">−</button>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  enterkeyhint="done"
+                  data-role="qty-input"
+                  data-field="return"
+                  aria-label="退貨數量"
+                  value="${product.return ? escapeHtml(product.return) : ""}"
+                  placeholder="0"
+                  autocomplete="off"
+                />
+                <button type="button" data-action="plus" data-field="return" aria-label="增加退貨">+</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderSummary() {
+      const { selected, saveTotal, returnTotal } = getSummary();
+
+      el.statProducts.textContent = String(state.products.length);
+      el.statSelected.textContent = String(selected.length);
+      el.statSave.textContent = String(saveTotal);
+      el.statReturn.textContent = String(returnTotal);
+      el.bottomSummary.textContent = `已選 ${selected.length} 項｜保存 ${saveTotal}｜退貨 ${returnTotal}`;
+
+      if (!selected.length) {
+        el.summaryList.innerHTML = '<div class="empty">目前未有任何已輸入數量的產品。</div>';
+        return;
+      }
+
+      el.summaryList.innerHTML = selected.map(item => `
+        <div class="summary-item">
+          <div class="summary-top">
+            <div>
+              <div class="summary-code">${escapeHtml(item.code)}</div>
+              <div class="summary-name">${escapeHtml(item.en)}${item.zh ? "｜" + escapeHtml(item.zh) : ""}</div>
+            </div>
+          </div>
+          <div class="summary-qty">
+            <span class="summary-badge">保存 ${item.save || 0}</span>
+            <span class="summary-badge return">退貨 ${item.return || 0}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderSearchClear() {
+      el.clearSearch.classList.toggle("show", Boolean(el.searchInput.value));
+    }
+
+    function renderAll() {
+      renderProducts();
+      renderSummary();
+      renderSearchClear();
+    }
+
+    function findProductById(id) {
+      return state.products.find(item => item.id === id);
+    }
+
+    function setQty(productId, field, rawValue) {
+      const item = findProductById(productId);
+      if (!item || !["save", "return"].includes(field)) return;
+      item[field] = qtyValue(rawValue);
+      persistSoon();
+      renderAll();
+    }
+
+    function stepQty(productId, field, diff) {
+      const item = findProductById(productId);
+      if (!item || !["save", "return"].includes(field)) return;
+      item[field] = Math.max(0, (item[field] || 0) + diff);
+      persistSoon();
+      renderAll();
+    }
+
+    function openSheet(sheetId) {
+      const sheet = document.getElementById(sheetId);
+      if (!sheet) return;
+      activeSheet = sheet;
+      el.backdrop.classList.add("show");
+      sheet.classList.add("show");
+      sheet.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeActiveSheet() {
+      if (!activeSheet) return;
+      activeSheet.classList.remove("show");
+      activeSheet.setAttribute("aria-hidden", "true");
+      activeSheet = null;
+      el.backdrop.classList.remove("show");
+      document.body.style.overflow = "";
+    }
+
+    function resetToSeedData() {
+      state.search = "";
+      state.products = cloneSeedProducts();
+      el.searchInput.value = "";
+      persistSoon();
+      renderAll();
+      closeActiveSheet();
+    }
+
+    async function hydrate() {
+      try {
+        const saved = await readState();
+        if (saved && Array.isArray(saved.products)) {
+          state.theme = saved.theme || getSystemTheme();
+          state.search = saved.search || "";
+          state.products = saved.products.map(item => ({
+            id: item.id || uid(),
+            code: digitsOnly(item.code),
+            en: String(item.en || "").trim(),
+            zh: String(item.zh || "").trim(),
+            save: qtyValue(item.save),
+            return: qtyValue(item.return)
+          }));
+        } else {
+          state.theme = getSystemTheme();
+          state.products = cloneSeedProducts();
+          await writeState();
+        }
+      } catch (error) {
+        state.theme = getSystemTheme();
+        state.products = cloneSeedProducts();
+      }
+
+      applyTheme(state.theme);
+      el.searchInput.value = state.search;
+      renderAll();
+    }
+
+    el.themeToggle.addEventListener("click", () => {
+      applyTheme(state.theme === "dark" ? "light" : "dark");
+    });
+
+    el.searchInput.addEventListener("input", e => {
+      state.search = e.target.value || "";
+      persistSoon();
+      renderAll();
+    });
+
+    el.clearSearch.addEventListener("click", () => {
+      state.search = "";
+      el.searchInput.value = "";
+      persistSoon();
+      renderAll();
+      el.searchInput.focus();
+    });
+
+    el.productList.addEventListener("click", e => {
+      const button = e.target.closest("button");
+      if (!button) return;
+
+      const row = e.target.closest(".product-row");
+      if (!row) return;
+
+      const productId = row.dataset.id;
+      const action = button.dataset.action;
+      const field = button.dataset.field;
+
+      if (action === "delete") {
+        const item = findProductById(productId);
+        if (!item) return;
+        const ok = window.confirm(`確認刪除產品？\n${item.code} ${item.en}${item.zh ? "｜" + item.zh : ""}`);
+        if (!ok) return;
+        state.products = state.products.filter(p => p.id !== productId);
+        persistSoon();
+        renderAll();
+        return;
+      }
+
+      if (action === "plus") stepQty(productId, field, 1);
+      if (action === "minus") stepQty(productId, field, -1);
+    });
+
+    el.productList.addEventListener("input", e => {
+      const input = e.target.closest('input[data-role="qty-input"]');
+      if (!input) return;
+      input.value = digitsOnly(input.value);
+      const row = e.target.closest(".product-row");
+      if (!row) return;
+      setQty(row.dataset.id, input.dataset.field, input.value);
+    });
+
+    el.productList.addEventListener("blur", e => {
+      const input = e.target.closest('input[data-role="qty-input"]');
+      if (!input) return;
+      input.value = digitsOnly(input.value);
+      if (!input.value) input.value = "";
+    }, true);
+
+    el.openAddSheet.addEventListener("click", () => openSheet("addSheet"));
+    el.openSummary.addEventListener("click", () => openSheet("summarySheet"));
+    el.openSummaryBottom.addEventListener("click", () => openSheet("summarySheet"));
+
+    el.backdrop.addEventListener("click", closeActiveSheet);
+
+    document.addEventListener("click", e => {
+      const closeTarget = e.target.closest("[data-close]");
+      if (!closeTarget) return;
+      closeActiveSheet();
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") closeActiveSheet();
+    });
+
+    el.addForm.addEventListener("submit", e => {
+      e.preventDefault();
+
+      const formData = new FormData(el.addForm);
+      const code = digitsOnly(formData.get("code"));
+      const en = String(formData.get("en") || "").trim();
+      const zh = String(formData.get("zh") || "").trim();
+
+      if (!code) {
+        alert("產品編號只可輸入數字，且不可留空。");
+        return;
+      }
+
+      if (!en) {
+        alert("請輸入英文名稱。");
+        return;
+      }
+
+      const duplicated = state.products.some(item => item.code === code);
+      if (duplicated) {
+        alert("已有相同產品編號，請勿重複新增。");
+        return;
+      }
+
+      state.products.unshift({
+        id: uid(),
+        code,
+        en,
+        zh,
+        save: 0,
+        return: 0
+      });
+
+      el.addForm.reset();
+      persistSoon();
+      renderAll();
+      closeActiveSheet();
+    });
+
+    el.resetAll.addEventListener("click", () => {
+      const first = window.confirm("將清空全部已保存資料，並還原為預設產品名單。是否繼續？");
+      if (!first) return;
+      const second = window.confirm("請再次確認：此操作會刪除所有已輸入數量及你自行新增的產品。");
+      if (!second) return;
+      resetToSeedData();
+    });
+
+    hydrate();
+  </script>
+</body>
+</html>
