@@ -66,7 +66,7 @@
     }
 
     input {
-      width: 100%;
+      min-width: 44px;
       border: 1px solid var(--border);
       border-radius: 12px;
       background: var(--surface);
@@ -350,8 +350,10 @@
 
     .stepper input {
       min-height: 40px;
+      min-width: 30px;    /* override global 44px so grid column won't overflow */
+      width: 100%;        /* fill the 1fr grid column */
       text-align: center;
-      padding: 8px;
+      padding: 8px 4px;
       font-weight: 700;
     }
 
@@ -533,6 +535,22 @@
       font-size: 12px;
       color: var(--muted);
       margin-top: 6px;
+    }
+
+    /* Small phones: shrink stepper buttons slightly */
+    @media (max-width: 360px) {
+      .stepper {
+        grid-template-columns: 36px 1fr 36px;
+        gap: 4px;
+      }
+      .stepper button {
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 18px;
+      }
+      .qty-box {
+        padding: 8px;
+      }
     }
 
     @media (min-width: 640px) {
@@ -1011,6 +1029,16 @@
       renderAll();
     }
 
+    // Quiet version: updates state + summary only, does NOT re-render product list
+    // Used during live typing to prevent keyboard dismissal on mobile
+    function setQtyQuiet(productId, field, rawValue) {
+      const item = findProductById(productId);
+      if (!item || !["save", "return"].includes(field)) return;
+      item[field] = qtyValue(rawValue);
+      persistSoon();
+      renderSummary();
+    }
+
     function stepQty(productId, field, diff) {
       const item = findProductById(productId);
       if (!item || !["save", "return"].includes(field)) return;
@@ -1126,7 +1154,8 @@
       input.value = digitsOnly(input.value);
       const row = e.target.closest(".product-row");
       if (!row) return;
-      setQty(row.dataset.id, input.dataset.field, input.value);
+      // Use quiet version to avoid re-rendering (which dismisses keyboard on mobile)
+      setQtyQuiet(row.dataset.id, input.dataset.field, input.value);
     });
 
     el.productList.addEventListener("blur", e => {
