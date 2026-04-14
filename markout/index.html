@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <link rel="icon" type="image/png" href="favicon.png">
+  <script type="text/javascript" nonce="b17b0f16c3574046bd4748bc936" src="//local.adguard.org?ts=1776182371803&amp;type=content-script&amp;dmn=ppl-ai-code-interpreter-files.s3.amazonaws.com&amp;url=https%3A%2F%2Fppl-ai-code-interpreter-files.s3.amazonaws.com%2Fweb%2Fdirect-files%2Fb42ac5f32c136395b77f7d9481c8c116%2F1f63b79e-cb38-4250-b389-e82b36311123%2F0eb54730.html%3Fresponse-content-disposition%3Dattachment%253B%2520filename%253D%2522index.html%2522%253B%2520filename%252A%253DUTF-8%2527%2527index.html%26AWSAccessKeyId%3DASIA2F3EMEYEWFDJOO3X%26Signature%3D6MHWUhhs1RTPBuQymXldTTQY%252Fjc%253D%26x-amz-security-token%3DIQoJb3JpZ2luX2VjEMn%252F%252F%252F%252F%252F%252F%252F%252F%252F%252FwEaCXVzLWVhc3QtMSJHMEUCIC8RVABQ8nkMmB6B%252FzxtsY5vvWHdrJf7XQYuKYX2QoUhAiEAuMcIGp6oYNZu4FYy%252BkAjTl%252BdbcePAHHAlVoXd4SnfJIq%252FAQIkf%252F%252F%252F%252F%252F%252F%252F%252F%252F%252FARABGgw2OTk3NTMzMDk3MDUiDLk8hZYuPcpAlFBLSSrQBEtqlNZ0ymMhqEX0Zy3nfEzp30KuRdRYZexstciA018WJwbfn5am1jyU0Ht2dqEwEbWCATGYfVpDasewmblkNepf3gCNgx%252FnIWfnMAJ%252BTEXn47qX3IEK73VQF2o1YyZxfD3wzNdzVafSGItm8%252BmogSUTa8yOA5MIUOz3FpygMCRVmlFrh%252B%252B4IaohZ2mqIA2qepB1iYyCKrCtMryW8GEXM7zcwwdNe9R2dM%252B6XX9u3BR7xsjBRpCaSXVdOA5k6ufbdgEg67zV7ofwtBgxgUpDYQhPogbKannPo2ul7prexWwk%252Fkza5iaSwzPK0KZ%252B5vognpcs0kG5wN8F9hP1gVaqn4c0VklaH%252BAnO2H5d0wFB6WNiWoDAkzROOswO7NvAOr8kWb%252Bbbxvx2O0vml16p2RVIKC%252B6jrQFzuzMmERpDiz51nvkKORA6HIJTUvfPeZEarIPVoAGTX2lmD%252BtuPct8b7Nygv5B8M8yWWm9%252FkQIBOUbVSsw8N3v5qV1xRAQj0z8FoNiqZUVbGM90joJO%252B7U5O9GjQ9HYQPPb4zcXrEo43QSmetqm3EUJAdMPPLIO9mC2DzJ2oJap4s7F6yTPtckmOfbFPygahrRNPGQZwbmvg5t%252BROCdUHmcUUGq6kAfjP%252B688v1%252BwtNj9hgAECtHuRAlZY%252BB%252BE62bxF5qLMQ1SH%252BySKxqcODRJLv14bqEfkvNA5IvlAcbUMtSQV6DpHI%252FH5Tv1CW9pcvPCjWnFtANy6QOU%252Fli95BVIYkXK8hiMaLnEOH26KqPG9CEEIActZunb%252FGHowwdD5zgY6mAH85pNtxUjI8XpZHn9cLohOPLNNQx%252F9c3U2WfgZGDLAGsUs5Ms8IMh6GEcK3XrJG1XB0Hg9gGX897hFPO%252FTzQZ%252FA6%252FT9MQ%252F55eQysajRHE4jl7qn%252FOnHlbRNH5w2ZoTi35bzmUYsec7LR5L3fHXFyI7PVtWfhBKUx5SxjZnPlAtM2YYzScz7AqdHJ9RPJMa4jzdw%252FturbKE0Q%253D%253D%26Expires%3D1776183961&amp;app=com.yandex.browser&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=0"></script><script type="text/javascript" nonce="b17b0f16c3574046bd4748bc936" src="//local.adguard.org?ts=1776182371803&amp;name=AdGuard%20Extra&amp;name=Disable%20AMP&amp;type=user-script"></script><link rel="icon" type="image/png" href="favicon.png">
   <title>Markout 點存系統</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -559,6 +559,51 @@
       }
     }
 
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-filter {
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--muted);
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .btn-filter.active {
+      background: var(--danger-soft);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    /* ── Topbar search row ── */
+    .topbar-search {
+      margin-top: 8px;
+    }
+
+    .topbar-search .search-wrap {
+      width: 100%;
+      display: block;
+    }
+
+    .topbar-search .search-wrap input {
+      width: 100%;
+    }
+
+    /* ── Full-width utility button ── */
+    .btn-full {
+      width: 100%;
+      margin-top: 8px;
+    }
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; }
     }
@@ -586,6 +631,19 @@
           <span id="themeIcon">🌙</span>
         </button>
       </div>
+
+      <div class="topbar-search">
+        <div class="search-wrap">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="搜尋編號／英文／中文名稱"
+            aria-label="搜尋產品"
+            autocomplete="off"
+          />
+          <button class="clear-search" id="clearSearch" type="button" aria-label="清除搜尋文字">✕</button>
+        </div>
+      </div>
     </header>
 
     <main id="main">
@@ -611,24 +669,14 @@
       </section>
 
       <section class="panel">
-        <div class="search-row">
-          <div class="search-wrap">
-            <input
-              id="searchInput"
-              type="search"
-              placeholder="搜尋編號／英文／中文名稱"
-              aria-label="搜尋產品"
-              autocomplete="off"
-            />
-            <button class="clear-search" id="clearSearch" type="button" aria-label="清除搜尋文字">✕</button>
-          </div>
-          <button class="btn btn-secondary" id="openAddSheet" type="button">臨時新增產品</button>
-        </div>
-
         <div class="toolbar-grid">
           <button class="btn btn-secondary" id="openSummary" type="button">查看清單</button>
           <button class="btn btn-danger" id="resetAll" type="button">一鍵清空</button>
         </div>
+        <div class="filter-bar">
+          <button class="btn btn-filter" id="filterReturnBtn" type="button">退貨篩選</button>
+        </div>
+        <button class="btn btn-secondary btn-full" id="openAddSheet" type="button">臨時新增產品</button>
       </section>
 
       <section class="panel">
@@ -691,6 +739,9 @@
     </div>
 
     <div class="helper">緊縮排版只顯示已輸入保存或退貨數量的產品。</div>
+    <div class="filter-bar">
+      <button class="btn btn-filter" id="summaryFilterReturnBtn" type="button">退貨篩選</button>
+    </div>
     <div class="summary-list" id="summaryList"></div>
   </section>
 
@@ -775,6 +826,8 @@
     const state = {
       theme: "light",
       search: "",
+      filterReturn: false,
+      summaryFilterReturn: false,
       products: []
     };
 
@@ -798,7 +851,9 @@
       summarySheet: document.getElementById("summarySheet"),
       backdrop: document.getElementById("backdrop"),
       addForm: document.getElementById("addForm"),
-      summaryList: document.getElementById("summaryList")
+      summaryList: document.getElementById("summaryList"),
+      filterReturnBtn: document.getElementById("filterReturnBtn"),
+      summaryFilterReturnBtn: document.getElementById("summaryFilterReturnBtn")
     };
 
     let dbPromise = null;
@@ -898,12 +953,25 @@
 
     function getFilteredProducts() {
       const keyword = state.search.trim().toLowerCase();
-      if (!keyword) return state.products;
-      return state.products.filter(p =>
+      let products = state.filterReturn
+        ? state.products.filter(p => (p.return || 0) > 0)
+        : state.products;
+      if (!keyword) return products;
+      return products.filter(p =>
         p.code.toLowerCase().includes(keyword) ||
         p.en.toLowerCase().includes(keyword) ||
         p.zh.toLowerCase().includes(keyword)
       );
+    }
+
+    function updateFilterBtn() {
+      el.filterReturnBtn.classList.toggle("active", state.filterReturn);
+      el.filterReturnBtn.textContent = state.filterReturn ? "退貨篩選 ✓" : "退貨篩選";
+    }
+
+    function updateSummaryFilterBtn() {
+      el.summaryFilterReturnBtn.classList.toggle("active", state.summaryFilterReturn);
+      el.summaryFilterReturnBtn.textContent = state.summaryFilterReturn ? "退貨篩選 ✓" : "退貨篩選";
     }
 
     function getSummary() {
@@ -986,12 +1054,16 @@
       el.statReturn.textContent = String(returnTotal);
       el.bottomSummary.textContent = `已選 ${selected.length} 項｜保存 ${saveTotal}｜退貨 ${returnTotal}`;
 
-      if (!selected.length) {
-        el.summaryList.innerHTML = '<div class="empty">目前未有任何已輸入數量的產品。</div>';
+      const displayItems = state.summaryFilterReturn
+        ? selected.filter(item => (item.return || 0) > 0)
+        : selected;
+
+      if (!displayItems.length) {
+        el.summaryList.innerHTML = `<div class="empty">${state.summaryFilterReturn ? "目前未有退貨數量的產品。" : "目前未有任何已輸入數量的產品。"}</div>`;
         return;
       }
 
-      el.summaryList.innerHTML = selected.map(item => `
+      el.summaryList.innerHTML = displayItems.map(item => `
         <div class="summary-item">
           <div class="summary-top">
             <div>
@@ -1068,9 +1140,13 @@
 
     function resetToSeedData() {
       state.search = "";
+      state.filterReturn = false;
+      state.summaryFilterReturn = false;
       state.products = cloneSeedProducts();
       el.searchInput.value = "";
       persistSoon();
+      updateFilterBtn();
+      updateSummaryFilterBtn();
       renderAll();
       closeActiveSheet();
     }
@@ -1081,6 +1157,8 @@
         if (saved && Array.isArray(saved.products)) {
           state.theme = saved.theme || getSystemTheme();
           state.search = saved.search || "";
+          state.filterReturn = saved.filterReturn || false;
+          state.summaryFilterReturn = saved.summaryFilterReturn || false;
           state.products = saved.products.map(item => ({
             id: item.id || uid(),
             code: digitsOnly(item.code),
@@ -1101,11 +1179,27 @@
 
       applyTheme(state.theme);
       el.searchInput.value = state.search;
+      updateFilterBtn();
+      updateSummaryFilterBtn();
       renderAll();
     }
 
     el.themeToggle.addEventListener("click", () => {
       applyTheme(state.theme === "dark" ? "light" : "dark");
+    });
+
+    el.filterReturnBtn.addEventListener("click", () => {
+      state.filterReturn = !state.filterReturn;
+      updateFilterBtn();
+      persistSoon();
+      renderProducts();
+    });
+
+    el.summaryFilterReturnBtn.addEventListener("click", () => {
+      state.summaryFilterReturn = !state.summaryFilterReturn;
+      updateSummaryFilterBtn();
+      persistSoon();
+      renderSummary();
     });
 
     el.searchInput.addEventListener("input", e => {
