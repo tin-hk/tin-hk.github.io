@@ -1056,6 +1056,13 @@
       renderAll();
     });
 
+    el.searchInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        el.searchInput.blur();
+      }
+    });
+
     el.clearSearch.addEventListener("click", () => {
       state.search = "";
       el.searchInput.value = "";
@@ -1091,6 +1098,14 @@
       input.value = digitsOnly(input.value);
       if (!input.value) input.value = "";
     }, true);
+
+    el.productList.addEventListener("keydown", e => {
+      if (e.key !== "Enter") return;
+      const input = e.target.closest('input[data-role="qty-input"]');
+      if (!input) return;
+      e.preventDefault();
+      input.blur();
+    });
 
     el.openAddSheet.addEventListener("click", () => openSheet("addSheet"));
     el.openSummary.addEventListener("click", () => {
