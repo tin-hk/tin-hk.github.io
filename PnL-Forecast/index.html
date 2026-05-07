@@ -608,7 +608,7 @@
             <div class="header-icon">
                 <i class="fas fa-chart-line text-xl"></i>
             </div>
-            <h1 class="page-title">損益 (P&L) 財務預算工具 <span style="color:#2563eb;font-size:0.7em">v4.10</span></h1>
+            <h1 class="page-title">損益 (P&L) 財務預算工具 <span style="color:#2563eb;font-size:0.7em">v4.11</span></h1>
             <p class="page-subtitle">支援實際利潤校準 (Actual Profit Tracker) &amp; 完整成本模型</p>
             <div class="action-row">
                 <button onclick="exportToExcel()" class="btn-modern btn-success">
@@ -624,10 +624,16 @@
                 <button onclick="resetAllData()" class="btn-modern btn-danger">
                     <i class="fas fa-redo-alt"></i> 重設數據
                 </button>
-                <button onclick="syncToFirebase()" id="btn_firebase_sync" class="btn-modern btn-firebase">
+                <button onclick="googleLogin()" id="btn_google_login" class="btn-modern btn-firebase">
+                    <i class="fab fa-google"></i> Google 登入
+                </button>
+                <button onclick="googleLogout()" id="btn_google_logout" class="btn-modern btn-secondary" style="display:none">
+                    <i class="fas fa-sign-out-alt"></i> 登出
+                </button>
+                <button onclick="syncToFirebase()" id="btn_firebase_sync" class="btn-modern btn-firebase" style="display:none">
                     <i class="fas fa-cloud-upload-alt"></i> 同步雲端
                 </button>
-                <button onclick="loadFromFirebase()" id="btn_firebase_load" class="btn-modern btn-firebase">
+                <button onclick="loadFromFirebase()" id="btn_firebase_load" class="btn-modern btn-firebase" style="display:none">
                     <i class="fas fa-cloud-download-alt"></i> 載入雲端
                 </button>
             </div>
@@ -735,9 +741,10 @@
         <div class="firebase-bar" id="firebaseBar">
             <div class="firebase-bar-left">
                 <span class="firebase-status-dot" id="fbStatusDot"></span>
-                <span id="fbStatusText">Firebase 未連線</span>
+                <span id="fbStatusText">請先登入 Google 帳號以啟用雲端同步</span>
             </div>
             <div class="firebase-bar-right">
+                <div id="fb_user_info" style="display:none;align-items:center;gap:6px"></div>
                 <span class="firebase-last-sync" id="fbLastSync"></span>
             </div>
         </div>
@@ -754,10 +761,12 @@
 
     <script type="module">
         // ══════════════════════════════════════════
-        //  Firebase Firestore setup
+        //  Firebase imports
         // ══════════════════════════════════════════
-        import { initializeApp }              from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+        import { initializeApp }                          from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc }      from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+                                                          from "https://www.gstatic.com/firebasejs/11.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey:            "AIzaSyDq2gnM5KvC9Pc3VZxIbWW6VLshf4tB9TE",
@@ -769,26 +778,82 @@
             measurementId:     "G-B5PJGWHZVM"
         };
 
-        const fireApp = initializeApp(firebaseConfig);
-        const db      = getFirestore(fireApp);
-        const FB_DOC  = 'pl_budget_data_v4.10';
+        const fireApp  = initializeApp(firebaseConfig);
+        const db       = getFirestore(fireApp);
+        const auth     = getAuth(fireApp);
+        const provider = new GoogleAuthProvider();
+        let   currentUser = null;
+        const FB_COLLECTION = 'budgets';
 
-        function setFbStatus(state, msg, lastSync) {
-            const dot  = document.getElementById('fbStatusDot');
-            const text = document.getElementById('fbStatusText');
-            const sync = document.getElementById('fbLastSync');
-            dot.className  = 'firebase-status-dot ' + (state || '');
-            text.innerText = msg || '';
-            if (lastSync) sync.innerText = '上次同步：' + lastSync;
+        // ── Auth state listener ──
+        onAuthStateChanged(auth, user => {
+            currentUser = user;
+            updateAuthUI(user);
+        });
+
+        function fbDocId() {
+            // Each Google account gets its own document
+            return currentUser ? `pl_budget_${currentUser.uid}` : null;
         }
 
+        function updateAuthUI(user) {
+            const loginBtn  = document.getElementById('btn_google_login');
+            const logoutBtn = document.getElementById('btn_google_logout');
+            const userInfo  = document.getElementById('fb_user_info');
+            const syncBtn   = document.getElementById('btn_firebase_sync');
+            const loadBtn   = document.getElementById('btn_firebase_load');
+
+            if (user) {
+                loginBtn.style.display  = 'none';
+                logoutBtn.style.display = 'inline-flex';
+                syncBtn.style.display   = 'inline-flex';
+                loadBtn.style.display   = 'inline-flex';
+                userInfo.style.display  = 'flex';
+                userInfo.innerHTML = `<img src="${user.photoURL || ''}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid #fed7aa" onerror="this.style.display='none'">
+                    <span style="font-size:11px;font-weight:700;color:#92400e;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${user.displayName || user.email}</span>`;
+                setFbStatus('online', '已登入 Google 帳號');
+            } else {
+                loginBtn.style.display  = 'inline-flex';
+                logoutBtn.style.display = 'none';
+                syncBtn.style.display   = 'none';
+                loadBtn.style.display   = 'none';
+                userInfo.style.display  = 'none';
+                setFbStatus('', '請先登入 Google 帳號以啟用雲端同步');
+            }
+        }
+
+        window.googleLogin = async function() {
+            try {
+                setFbStatus('syncing', '正在開啟 Google 登入…');
+                await signInWithPopup(auth, provider);
+            } catch (e) {
+                setFbStatus('error', '登入失敗：' + e.message);
+                console.error('Google login error:', e);
+            }
+        };
+
+        window.googleLogout = async function() {
+            try {
+                await signOut(auth);
+                setFbStatus('', '已登出');
+                showToast('已登出 Google 帳號');
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+        };
+
         window.syncToFirebase = async function() {
+            if (!currentUser) { showToast('請先登入 Google 帳號'); return; }
             const btn = document.getElementById('btn_firebase_sync');
             try {
                 setFbStatus('syncing', '正在上傳至雲端…');
                 btn.disabled = true;
                 const config = buildConfig();
-                await setDoc(doc(db, 'budgets', FB_DOC), { data: JSON.stringify(config), updatedAt: new Date().toISOString() });
+                await setDoc(doc(db, FB_COLLECTION, fbDocId()), {
+                    data:      JSON.stringify(config),
+                    updatedAt: new Date().toISOString(),
+                    email:     currentUser.email
+                });
                 const ts = new Date().toLocaleTimeString('zh-Hant', { hour: '2-digit', minute: '2-digit' });
                 setFbStatus('online', '雲端同步成功 ✓', ts);
                 showToast('已同步至 Firebase 雲端 ☁');
@@ -804,11 +869,12 @@
         };
 
         window.loadFromFirebase = async function() {
+            if (!currentUser) { showToast('請先登入 Google 帳號'); return; }
             const btn = document.getElementById('btn_firebase_load');
             try {
                 setFbStatus('syncing', '正在從雲端載入…');
                 btn.disabled = true;
-                const snap = await getDoc(doc(db, 'budgets', FB_DOC));
+                const snap = await getDoc(doc(db, FB_COLLECTION, fbDocId()));
                 if (!snap.exists()) {
                     setFbStatus('online', '雲端暫無數據');
                     showToast('雲端尚無已儲存的數據');
@@ -833,10 +899,19 @@
             }
         };
 
+        function setFbStatus(state, msg, lastSync) {
+            const dot  = document.getElementById('fbStatusDot');
+            const text = document.getElementById('fbStatusText');
+            const sync = document.getElementById('fbLastSync');
+            dot.className  = 'firebase-status-dot ' + (state || '');
+            text.innerText = msg || '';
+            if (lastSync) sync.innerText = '上次同步：' + lastSync;
+        }
+
         // ══════════════════════════════════════════
         //  App logic
         // ══════════════════════════════════════════
-        const LOCAL_STORAGE_KEY = 'pl_budget_data_v4.10';
+        const LOCAL_STORAGE_KEY = 'pl_budget_data_v4.11';
         let monthlyData = [];
 
         function buildConfig() {
@@ -859,7 +934,8 @@
         function initApp() {
             const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
             const oldData   = !savedData
-                ? localStorage.getItem('pl_budget_data_v4.9')
+                ? localStorage.getItem('pl_budget_data_v4.10')
+                  || localStorage.getItem('pl_budget_data_v4.9')
                   || localStorage.getItem('pl_budget_data_v4.8')
                   || localStorage.getItem('pl_budget_data_v4.7')
                 : null;
@@ -876,7 +952,6 @@
             } else {
                 initializeData();
             }
-            setFbStatus('online', 'Firebase 已就緒（本地數據）');
         }
 
         function initializeFromUI() { initializeData(); }
@@ -1085,9 +1160,8 @@
                 fEl.innerText = `$${Math.round(mForecastProfit).toLocaleString()}`;
                 fEl.style.color = mForecastProfit >= 0 ? '#16a34a' : '#dc2626';
 
-                const hasOverride = item.overrideTotalPersonnel !== null;
                 const badgeEl = document.getElementById(`m_override_badge_${index}`);
-                badgeEl.style.display = hasOverride ? 'inline-flex' : 'none';
+                badgeEl.style.display = hasPersonnelOverride ? 'inline-flex' : 'none';
 
                 const diffEl = document.getElementById(`m_diff_${index}`);
                 if (item.actualProfit !== null) {
@@ -1133,8 +1207,8 @@
         }
 
         function showToast(msg) {
-            const toast   = document.getElementById('saveToast');
-            const msgEl   = document.getElementById('toastMsg');
+            const toast = document.getElementById('saveToast');
+            const msgEl = document.getElementById('toastMsg');
             if (msgEl) msgEl.innerText = msg;
             toast.classList.add('visible');
             clearTimeout(window._toastTimer);
@@ -1146,7 +1220,7 @@
             document.getElementById('startMonth').value      = config.startMonth;
             document.getElementById('global_cogs').value     = config.global_cogs;
             document.getElementById('global_pers_pct').value = config.global_pers_pct;
-            document.getElementById('fixed_fulltime').value  = config.fixed.fulltime  || 35000;
+            document.getElementById('fixed_fulltime').value  = config.fixed.fulltime || 35000;
             document.getElementById('fixed_supplies').value  = config.fixed.supplies;
             document.getElementById('fixed_occupancy').value = config.fixed.occupancy;
             document.getElementById('fixed_other_exp').value = config.fixed.other;
@@ -1221,7 +1295,7 @@
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, 'PL_Report');
-            XLSX.writeFile(wb, `PL_Budget_v4.10_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, `PL_Budget_v4.11_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function downloadJsonBackup() {
@@ -1229,7 +1303,7 @@
             if (!savedData) return;
             const a = document.createElement('a');
             a.href = URL.createObjectURL(new Blob([savedData], { type: 'application/json' }));
-            a.download = 'PL_Budget_v4.10_Backup.json';
+            a.download = 'PL_Budget_v4.11_Backup.json';
             a.click();
         }
 
@@ -1252,20 +1326,20 @@
             reader.readAsText(file);
         }
 
-        // Expose functions needed by inline HTML event handlers
-        window.initializeFromUI  = initializeFromUI;
-        window.calculateAndSave  = calculateAndSave;
-        window.updateItem        = updateItem;
-        window.updateActualProfit= updateActualProfit;
-        window.updateOverride    = updateOverride;
-        window.exportToExcel     = exportToExcel;
-        window.downloadJsonBackup= downloadJsonBackup;
-        window.importData        = importData;
-        window.resetAllData      = resetAllData;
-        window.loadConfigToUI    = loadConfigToUI;
-        window.renderGrid        = renderGrid;
-        window.calculateAll      = calculateAll;
-        window.saveToLocal       = saveToLocal;
+        // Expose to inline HTML handlers
+        window.initializeFromUI   = initializeFromUI;
+        window.calculateAndSave   = calculateAndSave;
+        window.updateItem         = updateItem;
+        window.updateActualProfit = updateActualProfit;
+        window.updateOverride     = updateOverride;
+        window.exportToExcel      = exportToExcel;
+        window.downloadJsonBackup = downloadJsonBackup;
+        window.importData         = importData;
+        window.resetAllData       = resetAllData;
+        window.loadConfigToUI     = loadConfigToUI;
+        window.renderGrid         = renderGrid;
+        window.calculateAll       = calculateAll;
+        window.saveToLocal        = saveToLocal;
 
         window.onload = initApp;
     </script>
