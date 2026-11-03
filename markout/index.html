@@ -15,6 +15,7 @@
       --surface: #ffffff;
       --surface-2: #f3f1eb;
       --text: #1f2328;
+      --price-text: #4b5563;
       --muted: #667085;
       --border: rgba(31, 35, 40, 0.12);
       --primary: #0f766e;
@@ -33,6 +34,7 @@
       --surface: #1c2128;
       --surface-2: #232a33;
       --text: #f3f4f6;
+      --price-text: #c4c9d0;
       --muted: #a1aab6;
       --border: rgba(255, 255, 255, 0.12);
       --primary: #34d399;
@@ -185,6 +187,25 @@
     .code { font-size: 13px; font-weight: 700; color: var(--primary); letter-spacing: 0.02em; word-break: break-all; }
     .en { font-size: 15px; font-weight: 700; line-height: 1.35; margin-top: 2px; }
     .zh { font-size: 13px; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+
+
+    .product-price {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--price-text);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+    }
+    .product-price.unpriced {
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 12px;
+    }
 
     .qty-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .qty-box { background: var(--surface-2); border-radius: 12px; padding: 10px; }
@@ -445,8 +466,8 @@
           <input
             id="searchInput"
             type="text"
-            placeholder="搜尋編號／英文／中文名稱"
-            aria-label="搜尋產品"
+            placeholder="搜尋編號／名稱／價錢（如 $36）"
+            aria-label="搜尋產品編號、英文或中文名稱；輸入 $36 可搜尋售價恰好為 36 元的產品"
             autocomplete="off"
           />
           <button class="clear-search" id="clearSearch" type="button" aria-label="清除搜尋文字">✕</button>
@@ -772,6 +793,19 @@
       persistSoon();
     }
 
+    function getProductPrice(product) {
+      const price = Number(priceMap[product.code]);
+      return Number.isFinite(price) && price > 0 ? price : null;
+    }
+
+    function renderProductPrice(product) {
+      const price = getProductPrice(product);
+      if (price === null) {
+        return '<div class="product-price unpriced" aria-label="未設定售價">未設定售價</div>';
+      }
+      return `<div class="product-price" aria-label="售價 ${price} 港元">$${price}</div>`;
+    }
+
     function getFilteredProducts() {
       const keyword = state.search.trim().toLowerCase();
       let products = state.filterReturn
@@ -783,6 +817,15 @@
       }
 
       if (!keyword) return products;
+
+      // Currency-prefixed queries use exact numeric matching, not substring matching.
+      if (/^[$＄]/.test(keyword)) {
+        const match = keyword.match(/^[$＄]\s*(\d+(?:\.\d{1,2})?)$/);
+        if (!match) return [];
+        const targetPrice = Number(match[1]);
+        return products.filter(p => getProductPrice(p) === targetPrice);
+      }
+
       return products.filter(p =>
         p.code.toLowerCase().includes(keyword) ||
         p.en.toLowerCase().includes(keyword) ||
@@ -826,6 +869,7 @@
               <div class="en">${escapeHtml(product.en || "-")}</div>
               ${product.zh ? `<div class="zh">${escapeHtml(product.zh)}</div>` : ""}
             </div>
+            ${renderProductPrice(product)}
           </div>
 
           <div class="qty-grid">
@@ -903,6 +947,7 @@
                 <div class="summary-code">${escapeHtml(item.code)}</div>
                 <div class="summary-name">${escapeHtml(item.en)}${item.zh ? "｜" + escapeHtml(item.zh) : ""}${noPriceTag}</div>
               </div>
+              ${renderProductPrice(item)}
             </div>
             <div class="summary-qty">
               <span class="summary-badge">保存 ${item.save || 0}</span>
